@@ -51,6 +51,8 @@ def downloadImage(imgurls):
         r = requests.get(i, stream=True)
         if r.status_code == 200:
             size = 0
+            if not os.path.exists('cat/img'):
+                os.mkdir("cat/img")
             path = 'cat/img/'+i.split('/')[-1]
             with open(path, 'wb') as f:
                 for chunk in r.iter_content(1024):
@@ -97,5 +99,4 @@ def main():
             print('Error')
     print('All titles: ' + len(titles_url))
 main()
-
 
