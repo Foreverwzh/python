@@ -1,4 +1,4 @@
 # python
-python 程序测试
+python 小程序
 
-cat---抓取豆瓣特定小组所有话题图片
+spider/cat---抓取豆瓣特定小组所有话题图片
