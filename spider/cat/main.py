@@ -5,8 +5,8 @@ A test spider.
 # pylint: disable=line-too-long
 import re
 import os
-import requests
 import configparser
+import requests
 import matplotlib.pyplot as plt
 from PIL import Image
 
@@ -19,16 +19,19 @@ header = {
 def getCookies():
     """getCookies"""
     cf = configparser.ConfigParser()
-    cf.read('conf.ini')
-    cookies = cf.items('cookies')
-    cookies = dict(cookies)
+    try:
+        cf.read('conf.ini')
+        cookies = cf.items('cookies')
+        cookies = dict(cookies)
+    finally:
+        cookies = {}
     return cookies
 
 def getPage(r):
     """get all page links"""
     reg1 = re.compile('<div.*?class="paginator".*?>(.*?)</div>', re.S|re.M)
     res = re.findall(reg1, r.text)
-    if len(res) != 0:
+    if res:
         html = res[0]
         reg2 = re.compile(r'<a.*?href="(.*?)".*?>\d+</a>', re.S|re.M)
         url_arr = re.findall(reg2, html)
@@ -77,7 +80,7 @@ def humanProve(r, originalurl):
     pattern = re.compile(r'<img src="(.*?)" alt="captcha"/>')
     res = re.findall(pattern, r.text)
     print(res)
-    if len(res) > 0:
+    if res:
         r = requests.get(res[0])
         if r.status_code == 200:
             path = 'temp.jpg'
