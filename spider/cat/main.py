@@ -6,6 +6,7 @@ A test spider.
 import re
 import os
 import configparser
+from io import BytesIO
 import requests
 import matplotlib.pyplot as plt
 from PIL import Image
@@ -88,12 +89,10 @@ def humanProve(r, originalurl):
     if res:
         r = requests.get(res[0])
         if r.status_code == 200:
-            path = 'temp.jpg'
-            with open(path, 'wb') as f:
-                for chunk in r.iter_content(1024):
-                    f.write(chunk)
-            showImage(path)
-            os.remove(path)
+            img = Image.open(BytesIO(r.content))
+            plt.figure("captcha")
+            plt.imshow(img)
+            plt.show()
             c_str = input('Please input captcha string: ')
             cid = res[0].replace('https://www.douban.com/misc/captcha?id=', '')
             print(cid)
@@ -121,7 +120,7 @@ def humanProve(r, originalurl):
 def showImage(path):
     """ show image """
     img = Image.open(path)
-    plt.figure("captcha")
+    plt.figure(path)
     plt.imshow(img)
     plt.show()
 
@@ -132,7 +131,6 @@ def main():
     r = requests.get(url, headers=header, cookies=cookies)
     if r.status_code != 200:
         if r.status_code == 403:
-            print(r.text)
             r = humanProve(r, url)
             if not r:
                 print('403')
@@ -171,4 +169,7 @@ def main():
             else:
                 exit()
     print('All titles: ' + str(len(titles_url)))
-main()
+# main()
+
+if __name__ == '__main__':
+    main()
