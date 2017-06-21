@@ -23,35 +23,41 @@ def getCookies():
         cf.read('conf.ini')
         cookies = cf.items('cookies')
         cookies = dict(cookies)
-    finally:
+    except Exception as e:
+        print('Exception: ' + e)
         cookies = {}
     return cookies
 
 def getPage(r):
     """get all page links"""
-    reg1 = re.compile('<div.*?class="paginator".*?>(.*?)</div>', re.S|re.M)
+    page_num = 0
+    reg1 = re.compile('<span.*?class="thispage".*?data-total-page="(.*?)">.*?</span>')
     res = re.findall(reg1, r.text)
     if res:
-        html = res[0]
-        reg2 = re.compile(r'<a.*?href="(.*?)".*?>\d+</a>', re.S|re.M)
-        url_arr = re.findall(reg2, html)
-        return url_arr
-    return []
+        page_num = int(res[0])
+    return page_num
 
-def findTitle(pages, cookies):
+def findTitle(url, pages, cookies):
     """find all title links"""
     t = []
-    for page in pages:
-        print('Connecting to "'+page+'":')
-        r = requests.get(page, headers=header, cookies=cookies)
+    page = 0
+    while page < pages:
+        u = url+'?start='+str(page*25)
+        print('Connecting to "'+u+'":')
+        r = requests.get(u, headers=header, cookies=cookies)
         if r.status_code == 200:
             print('Success')
             reg = re.compile(r'<td\s*class="title"\s*?>\s*?<a href="(.*?)".*?>.*?</a></td>', re.S|re.M)
             titles = re.findall(reg, r.text)
-            print(titles)
             t += titles
+        elif r.status_code == 403:
+            c = humanProve(r, u)
+            if not c:
+                print('403')
+                exit()
         else:
-            print('Error')
+            print(r.status_code)
+        page += 1
     return t
 
 def downloadImage(imgurls, cookies):
@@ -79,7 +85,6 @@ def humanProve(r, originalurl):
     """ hunman being proving """
     pattern = re.compile(r'<img src="(.*?)" alt="captcha"/>')
     res = re.findall(pattern, r.text)
-    print(res)
     if res:
         r = requests.get(res[0])
         if r.status_code == 200:
@@ -88,6 +93,7 @@ def humanProve(r, originalurl):
                 for chunk in r.iter_content(1024):
                     f.write(chunk)
             showImage(path)
+            os.remove(path)
             c_str = input('Please input captcha string: ')
             cid = res[0].replace('https://www.douban.com/misc/captcha?id=', '')
             print(cid)
@@ -101,14 +107,19 @@ def humanProve(r, originalurl):
             rp = requests.post('https://www.douban.com/misc/sorry', data=data, cookies=getCookies(), headers=header)
             if rp.status_code == 403:
                 humanProve(rp, originalurl)
+            elif rp.status_code == 200:
+                return rp
+            else:
+                print(rp.status_code)
+                return False
         else:
             print("Fail to download captcha image.")
-        # input('Please input string: ')
+            return False
+    else:
+        return False
 
 def showImage(path):
     """ show image """
-    # cont = plt.Image.read(path)
-    # plt.imshow(cont)
     img = Image.open(path)
     plt.figure("captcha")
     plt.imshow(img)
@@ -117,22 +128,26 @@ def showImage(path):
 def main():
     """main function"""
     url = 'https://www.douban.com/group/481977/discussion'
-    r = requests.get(url, headers=header)
-    cookies = {}
+    cookies = getCookies()
+    r = requests.get(url, headers=header, cookies=cookies)
     if r.status_code != 200:
-        print(r.status_code)
-        cookies = getCookies()
-        r = requests.get(url, headers=header, cookies=cookies)
-        if r.status_code != 200:
+        if r.status_code == 403:
+            print(r.text)
+            r = humanProve(r, url)
+            if not r:
+                print('403')
+                exit()
+        else:
             print(r.status_code)
-            print('Invalid Cookies')
             exit()
     print('Page_links:')
     pages = getPage(r)
     print(pages)
+    if not pages:
+        exit()
     print('Title_url:')
-    titles_url = findTitle(pages, cookies)
-    print(titles_url)
+    titles_url = findTitle(url, pages, cookies)
+    print(len(titles_url))
     for title_url in titles_url:
         print('Connecting to "'+title_url+'":')
         r = requests.get(title_url, headers=header, cookies=cookies)
