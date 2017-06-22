@@ -6,6 +6,7 @@ A test spider.
 import re
 import os
 import configparser
+import time
 from io import BytesIO
 import requests
 import matplotlib.pyplot as plt
@@ -16,6 +17,7 @@ header = {
     'Host':'www.douban.com',
     'Upgrade-Insecure-Requests':'1'
 }
+sleep = 0.7
 
 def getCookies():
     """getCookies"""
@@ -25,7 +27,7 @@ def getCookies():
         cookies = cf.items('cookies')
         cookies = dict(cookies)
     except Exception as e:
-        print('Exception: ' + e)
+        print('Exception: ' + str(e))
         cookies = {}
     return cookies
 
@@ -43,6 +45,8 @@ def findTitle(url, pages, cookies):
     t = []
     page = 0
     while page < pages:
+        if sleep:
+            time.sleep(sleep)
         u = url+'?start='+str(page*25)
         print('Connecting to "'+u+'":')
         r = requests.get(u, headers=header, cookies=cookies)
@@ -63,14 +67,20 @@ def findTitle(url, pages, cookies):
 
 def downloadImage(imgurls, cookies):
     """download image"""
+    folder_path = 'cat/img'
+    if not os.path.exists(folder_path):
+        os.mkdir(folder_path)
     for i in imgurls:
+        path = folder_path + '/' + i.split('/')[-1]
+        if os.path.exists(path):
+            print(i + ' existed')
+            continue
         print('Downloading '+i+':')
+        if sleep:
+            time.sleep(sleep)
         r = requests.get(i, stream=True, cookies=cookies)
         if r.status_code == 200:
             size = 0
-            if not os.path.exists('cat/img'):
-                os.mkdir("cat/img")
-            path = 'cat/img/'+i.split('/')[-1]
             with open(path, 'wb') as f:
                 for chunk in r.iter_content(1024):
                     f.write(chunk)
@@ -124,9 +134,8 @@ def showImage(path):
     plt.imshow(img)
     plt.show()
 
-def main():
+def main(url):
     """main function"""
-    url = 'https://www.douban.com/group/481977/discussion'
     cookies = getCookies()
     r = requests.get(url, headers=header, cookies=cookies)
     if r.status_code != 200:
@@ -143,11 +152,13 @@ def main():
     print(pages)
     if not pages:
         exit()
-    print('Title_url:')
     titles_url = findTitle(url, pages, cookies)
+    print('Title_url:')
     print(len(titles_url))
     for title_url in titles_url:
         print('Connecting to "'+title_url+'":')
+        if sleep:
+            time.sleep(sleep)
         r = requests.get(title_url, headers=header, cookies=cookies)
         if r.status_code == 200:
             print('Success')
@@ -166,10 +177,8 @@ def main():
             print('Error: ' + str(r.status_code))
             if r.status_code == 403:
                 humanProve(r, title_url)
-            else:
-                exit()
     print('All titles: ' + str(len(titles_url)))
-# main()
 
 if __name__ == '__main__':
-    main()
+    group_url = 'https://www.douban.com/group/481977/discussion'
+    main(group_url)
